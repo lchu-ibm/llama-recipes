@@ -44,13 +44,12 @@ def main(**kwargs):
     torch.cuda.set_device(rank)
     setup_environ_flags(rank)
 
-    start = time.perf_counter()
-    llama_config = LlamaConfig.from_pretrained(train_config.model_name)
-    with torch.device("meta"):
-        model = LlamaForCausalLM(llama_config)
-    end = time.perf_counter()
     if rank == 0:
-        print(f"cpu model loading time = {end-start:.4f}\n")
+        model = LlamaForCausalLM.from_pretrained(train_config.model_name)
+    else:
+        llama_config = LlamaConfig.from_pretrained(train_config.model_name)
+        with torch.device("meta"):
+            model = LlamaForCausalLM(llama_config)
 
     mixed_precision_policy, wrapping_policy = get_policies(fsdp_config, rank)
 
@@ -63,6 +62,7 @@ def main(**kwargs):
             sharding_strategy=fsdp_config.sharding_strategy,
             device_id=torch.cuda.current_device(),
             limit_all_gathers=True,
+            sync_module_states=True,
             param_init_fn=lambda module: module.to_empty(device=torch.device("cuda"), recurse=False),
         )
         end = time.perf_counter()
@@ -74,12 +74,6 @@ def main(**kwargs):
         print(f"Peak active CUDA memory was {memtrace.peak_active_gb} GB")
         print(f"Cuda Malloc retires : {memtrace.cuda_malloc_retires}")
         print(f"CPU Total Peak Memory consumed during the train (max): {memtrace.cpu_peaked + memtrace.cpu_begin} GB")
-
-    start = time.perf_counter()
-    checkpoint_handler.load_model_sharded(model, rank, train_config)
-    end = time.perf_counter()
-    if rank == 0:
-        print(f"sharded checkpoint loading time = {end - start:.4f}\n")
 
 
 if __name__ == "__main__":
