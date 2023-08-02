@@ -71,6 +71,7 @@ def main(**kwargs):
         print(f"Cuda Malloc retires : {memtrace.cuda_malloc_retires}")
         print(f"CPU Total Peak Memory consumed during the train (max): {memtrace.cpu_peaked + memtrace.cpu_begin} GB")
 
+    time.sleep(60*5)
 
 if __name__ == "__main__":
     fire.Fire(main)
