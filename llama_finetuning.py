@@ -157,6 +157,8 @@ def main(**kwargs):
     elif not train_config.quantization and not train_config.enable_fsdp:
         model.to("cuda")
 
+    model = torch.compile(model)
+
     dataset_config = generate_dataset_config(train_config, kwargs)
 
      # Load and preprocess the dataset for training and validation
